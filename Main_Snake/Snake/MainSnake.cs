@@ -68,7 +68,7 @@ namespace Snake
             }
 
             else if (stavKlavesnice.IsKeyDown(Keys.S))
-            {
+            {   
                 y += speed;
             }
 
