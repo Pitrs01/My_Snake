@@ -1,24 +1,33 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using System;
 
 namespace Snake
 {
-    public class Game1 : Game
+    public class Snake : Game
     {
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
+        Texture2D snakeTexture;
+        int x, y;
+        int height, width;
+        int speed = 2;
 
-        public Game1()
+        public Snake()
         {
             _graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
+            Window.Title = "Snake";
         }
 
         protected override void Initialize()
         {
-            // TODO: Add your initialization logic here
+
+            width = height = 20;
+            x = _graphics.PreferredBackBufferWidth / 2;
+            y = _graphics.PreferredBackBufferHeight / 2;
 
             base.Initialize();
         }
@@ -27,15 +36,41 @@ namespace Snake
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
 
-            // TODO: use this.Content to load your game content here
+            snakeTexture = new Texture2D(GraphicsDevice, width, height);
+            Color[] data = new Color[width * height];
+            for (int i = 0; i < data.Length; ++i)
+            {
+                data[i] = Color.LightGreen;
+            }
+        snakeTexture.SetData(data);
         }
 
         protected override void Update(GameTime gameTime)
         {
-            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
+            if (Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
 
-            // TODO: Add your update logic here
+            KeyboardState stavKlavesnice = Keyboard.GetState();
+
+            if (stavKlavesnice.IsKeyDown(Keys.A))
+            {
+                x -= speed;
+            }
+
+            else if (stavKlavesnice.IsKeyDown(Keys.D))
+            {
+                x += speed;
+            }
+
+            else if (stavKlavesnice.IsKeyDown(Keys.W))
+            {
+                y -= speed;
+            }
+
+            else if (stavKlavesnice.IsKeyDown(Keys.S))
+            {
+                y += speed;
+            }
 
             base.Update(gameTime);
         }
@@ -44,7 +79,9 @@ namespace Snake
         {
             GraphicsDevice.Clear(Color.CornflowerBlue);
 
-            // TODO: Add your drawing code here
+            _spriteBatch.Begin();
+            _spriteBatch.Draw(snakeTexture, new Vector2(x, y), Color.White);
+            _spriteBatch.End();
 
             base.Draw(gameTime);
         }
