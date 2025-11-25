@@ -1,7 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using SharpDX.MediaFoundation;
 using System;
 using System.Collections.Generic;
 
@@ -13,6 +12,7 @@ namespace Snake
         private SpriteBatch _spriteBatch;
         private Texture2D snakeTexture;
         private Apple apple;
+        private Pear pear;
         private List<Vector2> snakeBody;
         private Vector2 direction;
         private int cellSize = 20;
@@ -65,9 +65,18 @@ namespace Snake
             }
             snakeTexture.SetData(data);
 
+            // Vytvoření hrušky PŘED jablkem (kvůli kontrole v SpawnApple)
+            pear = new Pear(GraphicsDevice, cellSize);
+
             // Vytvoření jablka
             apple = new Apple(GraphicsDevice, cellSize);
             SpawnApple();
+
+            // Spawn první hrušky hned na začátku (100% šance)
+            if (random.Next(0, 100) < 100)
+            {
+                SpawnPear();
+            }
         }
 
         private void SpawnApple()
@@ -82,9 +91,27 @@ namespace Snake
                     random.Next(0, maxX) * cellSize,
                     random.Next(0, maxY) * cellSize
                 );
-            } while (snakeBody.Contains(newPosition));
+            } while (snakeBody.Contains(newPosition) || (pear.IsActive && newPosition == pear.Position));
 
             apple.Position = newPosition;
+        }
+
+        private void SpawnPear()
+        {
+            int maxX = _graphics.PreferredBackBufferWidth / cellSize;
+            int maxY = _graphics.PreferredBackBufferHeight / cellSize;
+
+            Vector2 newPosition;
+            do
+            {
+                newPosition = new Vector2(
+                    random.Next(0, maxX) * cellSize,
+                    random.Next(0, maxY) * cellSize
+                );
+            } while (snakeBody.Contains(newPosition) || newPosition == apple.Position);
+
+            pear.Position = newPosition;
+            pear.IsActive = true;
         }
 
         protected override void Update(GameTime gameTime)
@@ -167,9 +194,34 @@ namespace Snake
                 SpawnApple();
                 // Had se prodlouží (neodstraníme ocas)
             }
+            // Kontrola kolize s hruškou
+            else if (pear.IsActive && newHead == pear.Position)
+            {
+                score -= 5;
+                pear.IsActive = false;
+
+                // Had se zmenší o 2 (normální pohyb + extra zkrácení)
+                if (snakeBody.Count > 2)
+                {
+                    snakeBody.RemoveAt(snakeBody.Count - 1); // První zkrácení
+                    snakeBody.RemoveAt(snakeBody.Count - 1); // Druhé zkrácení
+                }
+                else
+                {
+                    // Had je moc krátký - game over
+                    gameOver = true;
+                    return;
+                }
+
+                // 90% šance na spawn nové hrušky po snědení
+                if (random.Next(0, 100) < 100)
+                {
+                    SpawnPear();
+                }
+            }
             else
             {
-                // Odstranění konce hada
+                // Normální pohyb - odstranění konce hada
                 snakeBody.RemoveAt(snakeBody.Count - 1);
             }
         }
@@ -182,6 +234,9 @@ namespace Snake
 
             // Vykreslení jablka
             apple.Draw(_spriteBatch);
+
+            // Vykreslení hrušky
+            pear.Draw(_spriteBatch);
 
             // Vykreslení hada
             for (int i = 0; i < snakeBody.Count; i++)
