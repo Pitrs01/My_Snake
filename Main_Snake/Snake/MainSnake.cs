@@ -15,6 +15,7 @@ namespace Snake
         private Pear pear;
         private List<Vector2> snakeBody;
         private Vector2 direction;
+        private Vector2 nextDirection;
         private int cellSize = 20;
         private float moveTimer;
         private float moveInterval = 0.15f;
@@ -47,6 +48,7 @@ namespace Snake
             snakeBody.Add(new Vector2(startX - cellSize * 2, startY));
 
             direction = new Vector2(1, 0); // Pohyb doprava
+            nextDirection = direction; // Inicializace nextDirection
             gameOver = false;
 
             base.Initialize();
@@ -135,22 +137,22 @@ namespace Snake
             if (stavKlavesnice.IsKeyDown(Keys.A) || stavKlavesnice.IsKeyDown(Keys.Left))
             {
                 if (direction.X == 0)
-                    direction = new Vector2(-1, 0);
+                    nextDirection = new Vector2(-1, 0);
             }
             else if (stavKlavesnice.IsKeyDown(Keys.D) || stavKlavesnice.IsKeyDown(Keys.Right))
             {
                 if (direction.X == 0)
-                    direction = new Vector2(1, 0);
+                    nextDirection = new Vector2(1, 0);
             }
             else if (stavKlavesnice.IsKeyDown(Keys.W) || stavKlavesnice.IsKeyDown(Keys.Up))
             {
                 if (direction.Y == 0)
-                    direction = new Vector2(0, -1);
+                    nextDirection = new Vector2(0, -1);
             }
             else if (stavKlavesnice.IsKeyDown(Keys.S) || stavKlavesnice.IsKeyDown(Keys.Down))
             {
                 if (direction.Y == 0)
-                    direction = new Vector2(0, 1);
+                    nextDirection = new Vector2(0, 1);
             }
 
             // Pohyb hada s časovačem
@@ -166,6 +168,9 @@ namespace Snake
 
         private void MoveSnake()
         {
+            // Aplikace nextDirection na direction před pohybem
+            direction = nextDirection;
+
             // Nová pozice hlavy
             Vector2 newHead = snakeBody[0] + direction * cellSize;
 
@@ -214,7 +219,7 @@ namespace Snake
                 }
 
                 // 90% šance na spawn nové hrušky po snědení
-                if (random.Next(0, 100) < 100)
+                if (random.Next(0, 100) < 90)
                 {
                     SpawnPear();
                 }
