@@ -20,7 +20,9 @@ namespace Snake
         private float moveTimer;
         private float moveInterval = 0.15f;
         private int score = 0;
-        private SpriteFont font;
+        private int level = 1;
+        private int targetLength = 6;
+        private const int maxLevel = 20;
         private Random random;
         private bool gameOver;
 
@@ -47,9 +49,11 @@ namespace Snake
             snakeBody.Add(new Vector2(startX - cellSize, startY));
             snakeBody.Add(new Vector2(startX - cellSize * 2, startY));
 
-            direction = new Vector2(1, 0); // Pohyb doprava
-            nextDirection = direction; // Inicializace nextDirection
+            direction = new Vector2(1, 0);
+            nextDirection = direction;
             gameOver = false;
+            level = 1;
+            targetLength = 6;
 
             base.Initialize();
         }
@@ -67,14 +71,14 @@ namespace Snake
             }
             snakeTexture.SetData(data);
 
-            // Vytvoření hrušky PŘED jablkem (kvůli kontrole v SpawnApple)
+            // Vytvoření hrušky PŘED jablkem
             pear = new Pear(GraphicsDevice, cellSize);
 
             // Vytvoření jablka
             apple = new Apple(GraphicsDevice, cellSize);
             SpawnApple();
 
-            // Spawn první hrušky hned na začátku (100% šance)
+            // Spawn první hrušky hned na začátku
             if (random.Next(0, 100) < 100)
             {
                 SpawnPear();
@@ -84,14 +88,14 @@ namespace Snake
         private void SpawnApple()
         {
             int maxX = _graphics.PreferredBackBufferWidth / cellSize;
-            int maxY = _graphics.PreferredBackBufferHeight / cellSize;
+            int maxY = (_graphics.PreferredBackBufferHeight - 40) / cellSize;
 
             Vector2 newPosition;
             do
             {
                 newPosition = new Vector2(
                     random.Next(0, maxX) * cellSize,
-                    random.Next(0, maxY) * cellSize
+                    random.Next(2, maxY) * cellSize + 40
                 );
             } while (snakeBody.Contains(newPosition) || (pear.IsActive && newPosition == pear.Position));
 
@@ -101,19 +105,45 @@ namespace Snake
         private void SpawnPear()
         {
             int maxX = _graphics.PreferredBackBufferWidth / cellSize;
-            int maxY = _graphics.PreferredBackBufferHeight / cellSize;
+            int maxY = (_graphics.PreferredBackBufferHeight - 40) / cellSize;
 
             Vector2 newPosition;
             do
             {
                 newPosition = new Vector2(
                     random.Next(0, maxX) * cellSize,
-                    random.Next(0, maxY) * cellSize
+                    random.Next(2, maxY) * cellSize + 40
                 );
             } while (snakeBody.Contains(newPosition) || newPosition == apple.Position);
 
             pear.Position = newPosition;
             pear.IsActive = true;
+        }
+
+        private void CheckLevelCompletion()
+        {
+            if (snakeBody.Count == targetLength)
+            {
+                level++;
+
+                if (level > maxLevel)
+                {
+                    gameOver = true;
+                    return;
+                }
+
+                // Střídavě větší a menší
+                if (level % 2 == 0)
+                {
+                    targetLength = Math.Max(3, snakeBody.Count - (2 + level / 3));
+                }
+                else
+                {
+                    targetLength = snakeBody.Count + (3 + level / 2);
+                }
+
+                score += 50;
+            }
         }
 
         protected override void Update(GameTime gameTime)
@@ -127,13 +157,13 @@ namespace Snake
                 {
                     Initialize();
                     score = 0;
+                    LoadContent();
                 }
                 return;
             }
 
             KeyboardState stavKlavesnice = Keyboard.GetState();
 
-            // Ovládání směru (nelze otočit o 180°)
             if (stavKlavesnice.IsKeyDown(Keys.A) || stavKlavesnice.IsKeyDown(Keys.Left))
             {
                 if (direction.X == 0)
@@ -155,7 +185,6 @@ namespace Snake
                     nextDirection = new Vector2(0, 1);
             }
 
-            // Pohyb hada s časovačem
             moveTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
             if (moveTimer >= moveInterval)
             {
@@ -168,65 +197,55 @@ namespace Snake
 
         private void MoveSnake()
         {
-            // Aplikace nextDirection na direction před pohybem
             direction = nextDirection;
-
-            // Nová pozice hlavy
             Vector2 newHead = snakeBody[0] + direction * cellSize;
 
-            // Kontrola kolize se zdí
             if (newHead.X < 0 || newHead.X >= _graphics.PreferredBackBufferWidth ||
-                newHead.Y < 0 || newHead.Y >= _graphics.PreferredBackBufferHeight)
+                newHead.Y < 40 || newHead.Y >= _graphics.PreferredBackBufferHeight)
             {
                 gameOver = true;
                 return;
             }
 
-            // Kontrola kolize se sebou samým
             if (snakeBody.Contains(newHead))
             {
                 gameOver = true;
                 return;
             }
 
-            // Přidání nové hlavy
             snakeBody.Insert(0, newHead);
 
-            // Kontrola kolize s jablkem
             if (newHead == apple.Position)
             {
                 score += 10;
                 SpawnApple();
-                // Had se prodlouží (neodstraníme ocas)
+                CheckLevelCompletion();
             }
-            // Kontrola kolize s hruškou
             else if (pear.IsActive && newHead == pear.Position)
             {
                 score -= 5;
                 pear.IsActive = false;
 
-                // Had se zmenší o 2 (normální pohyb + extra zkrácení)
                 if (snakeBody.Count > 2)
                 {
-                    snakeBody.RemoveAt(snakeBody.Count - 1); // První zkrácení
-                    snakeBody.RemoveAt(snakeBody.Count - 1); // Druhé zkrácení
+                    snakeBody.RemoveAt(snakeBody.Count - 1);
+                    snakeBody.RemoveAt(snakeBody.Count - 1);
                 }
                 else
                 {
-                    // Had je moc krátký - game over
                     gameOver = true;
                     return;
                 }
 
-                // 90% šance na spawn nové hrušky po snědení
-                if (random.Next(0, 100) < 90)
+                if (random.Next(0, 100) < 100)
                 {
                     SpawnPear();
                 }
+
+                CheckLevelCompletion();
             }
             else
             {
-                // Normální pohyb - odstranění konce hada
                 snakeBody.RemoveAt(snakeBody.Count - 1);
             }
         }
@@ -237,30 +256,94 @@ namespace Snake
 
             _spriteBatch.Begin();
 
-            // Vykreslení jablka
             apple.Draw(_spriteBatch);
-
-            // Vykreslení hrušky
             pear.Draw(_spriteBatch);
 
-            // Vykreslení hada
             for (int i = 0; i < snakeBody.Count; i++)
             {
-                Color color = i == 0 ? Color.DarkGreen : Color.White; // Hlava tmavší
+                Color color = i == 0 ? Color.DarkGreen : Color.White;
                 _spriteBatch.Draw(snakeTexture, snakeBody[i], color);
             }
 
+            DrawGameInfo();
+
             if (gameOver)
             {
-                // Zobrazení game over zprávy (bez fontu, jen barevný overlay)
                 Texture2D pixel = new Texture2D(GraphicsDevice, 1, 1);
                 pixel.SetData(new[] { Color.Black });
                 _spriteBatch.Draw(pixel, new Rectangle(0, 0, 800, 600), Color.Black * 0.7f);
+
+                bool won = level > maxLevel;
+                if (won)
+                {
+                    _spriteBatch.Draw(pixel, new Rectangle(0, 0, 800, 600), Color.Green * 0.3f);
+                }
             }
 
             _spriteBatch.End();
 
             base.Draw(gameTime);
+        }
+
+        private void DrawGameInfo()
+        {
+            Texture2D pixel = new Texture2D(GraphicsDevice, 1, 1);
+            pixel.SetData(new[] { Color.White });
+
+            _spriteBatch.Draw(pixel, new Rectangle(0, 0, 800, 40), Color.Black * 0.5f);
+
+            int currentLength = snakeBody.Count;
+            int barWidth = 200;
+            int barHeight = 20;
+            int barX = 10;
+            int barY = 10;
+
+            _spriteBatch.Draw(pixel, new Rectangle(barX, barY, barWidth, barHeight), Color.DarkGray);
+
+            float progress;
+            Color barColor;
+
+            if (targetLength > currentLength)
+            {
+                progress = (float)currentLength / targetLength;
+                barColor = Color.LimeGreen;
+            }
+            else if (targetLength < currentLength)
+            {
+                progress = 1f - ((float)(currentLength - targetLength) / currentLength);
+                barColor = Color.Orange;
+            }
+            else
+            {
+                progress = 1f;
+                barColor = Color.Gold;
+            }
+
+            int fillWidth = (int)(barWidth * progress);
+            _spriteBatch.Draw(pixel, new Rectangle(barX, barY, fillWidth, barHeight), barColor);
+
+            DrawRectangleOutline(pixel, new Rectangle(barX, barY, barWidth, barHeight), Color.White, 2);
+
+            int infoX = barX + barWidth + 20;
+
+            DrawInfoBox(pixel, infoX, barY, 80, barHeight, Color.Blue);
+            DrawInfoBox(pixel, infoX + 90, barY, 120, barHeight,
+                currentLength == targetLength ? Color.Gold : (targetLength > currentLength ? Color.Green : Color.Orange));
+            DrawInfoBox(pixel, infoX + 220, barY, 100, barHeight, Color.Purple);
+        }
+
+        private void DrawInfoBox(Texture2D pixel, int x, int y, int width, int height, Color color)
+        {
+            _spriteBatch.Draw(pixel, new Rectangle(x, y, width, height), color * 0.3f);
+            DrawRectangleOutline(pixel, new Rectangle(x, y, width, height), color, 2);
+        }
+
+        private void DrawRectangleOutline(Texture2D pixel, Rectangle rect, Color color, int thickness)
+        {
+            _spriteBatch.Draw(pixel, new Rectangle(rect.X, rect.Y, rect.Width, thickness), color);
+            _spriteBatch.Draw(pixel, new Rectangle(rect.X, rect.Y + rect.Height - thickness, rect.Width, thickness), color);
+            _spriteBatch.Draw(pixel, new Rectangle(rect.X, rect.Y, thickness, rect.Height), color);
+            _spriteBatch.Draw(pixel, new Rectangle(rect.X + rect.Width - thickness, rect.Y, thickness, rect.Height), color);
         }
     }
 }
