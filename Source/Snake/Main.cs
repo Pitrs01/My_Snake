@@ -23,7 +23,7 @@ namespace Snake
         private int score = 0;
         private int level = 1;
         private int targetLength = 6;
-        private const int maxLevel = 20;
+        private const int maxLevel = 10;
         private Random random;
         private bool gameOver;
 
@@ -33,8 +33,8 @@ namespace Snake
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
             Window.Title = "Snake Game";
-            _graphics.PreferredBackBufferWidth = 800;
-            _graphics.PreferredBackBufferHeight = 600;
+            _graphics.PreferredBackBufferWidth = 450;
+            _graphics.PreferredBackBufferHeight = 350;
         }
 
         protected override void Initialize()
@@ -144,10 +144,14 @@ namespace Snake
                 level++;
 
                 if (level > maxLevel)
+                    level = maxLevel;
+
+                if (level == maxLevel)
                 {
                     gameOver = true;
                     return;
                 }
+
 
                 // Střídavě větší a menší
                 if (level % 2 == 0)
@@ -307,22 +311,28 @@ namespace Snake
 
             DrawGameInfo();
 
-            if (gameOver)
-            {
-                Texture2D pixel = new Texture2D(GraphicsDevice, 1, 1);
-                pixel.SetData(new[] { Color.Black });
-                _spriteBatch.Draw(pixel, new Rectangle(0, 0, 800, 600), Color.Black * 0.7f);
-
-                bool won = level > maxLevel;
-                if (won)
-                {
-                    _spriteBatch.Draw(pixel, new Rectangle(0, 0, 800, 600), Color.Green * 0.3f);
-                }
-            }
-
             _spriteBatch.End();
 
-            base.Draw(gameTime);
+            if (gameOver)
+            {
+                _spriteBatch.Begin();
+
+                Texture2D pixel = new Texture2D(GraphicsDevice, 1, 1);
+                pixel.SetData(new[] { Color.White });
+
+                bool won = (level == maxLevel);
+
+                Color overlayColor = won ? Color.Green * 0.5f : Color.Black * 0.7f;
+
+                _spriteBatch.Draw(pixel, new Rectangle(0, 0,
+                    _graphics.PreferredBackBufferWidth,
+                    _graphics.PreferredBackBufferHeight), overlayColor);
+
+                _spriteBatch.End();
+                base.Draw(gameTime);
+            }
+                return;
+
         }
 
         private void DrawGameInfo()
@@ -367,11 +377,10 @@ namespace Snake
             int infoX = barX + barWidth + 20;
 
             // Vykreslení boxů
-            DrawInfoBox(pixel, infoX, barY, 80, barHeight, Color.Blue);
-            DrawInfoBox(pixel, infoX + 90, barY, 120, barHeight,
-                currentLength == targetLength ? Color.Gold : (targetLength > currentLength ? Color.Green : Color.Orange));
-            DrawInfoBox(pixel, infoX + 220, barY, 100, barHeight, Color.Purple);
+            DrawInfoBox(pixel, infoX + 30, barY, 120, barHeight,
+                currentLength == targetLength ? Color.Gold : (targetLength > currentLength ? Color.Red : Color.Yellow));
         }
+        
 
         private void DrawInfoBox(Texture2D pixel, int x, int y, int width, int height, Color color)
         {
