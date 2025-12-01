@@ -3,12 +3,14 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace Snake
 {
-    public class Pear
+    public class Pear : ICollectible
     {
         private Texture2D texture;
         public Vector2 Position { get; set; }
-        private int size;
         public bool IsActive { get; set; }
+        public int ScoreValue => -5;
+        public int LengthChange => -1;
+        private int size;
 
         public Pear(GraphicsDevice graphicsDevice, int cellSize)
         {

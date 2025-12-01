@@ -3,15 +3,19 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace Snake
 {
-    public class Apple
+    public class Apple : ICollectible
     {
         private Texture2D texture;
         public Vector2 Position { get; set; }
+        public bool IsActive { get; set; }
+        public int ScoreValue => 10;
+        public int LengthChange => 1;
         private int size;
 
         public Apple(GraphicsDevice graphicsDevice, int cellSize)
         {
             size = cellSize;
+            IsActive = true;
 
             // Vytvoření červené textury pro jablko
             texture = new Texture2D(graphicsDevice, cellSize, cellSize);
@@ -45,7 +49,10 @@ namespace Snake
 
         public void Draw(SpriteBatch spriteBatch)
         {
-            spriteBatch.Draw(texture, Position, Color.White);
+            if (IsActive)
+            {
+                spriteBatch.Draw(texture, Position, Color.White);
+            }
         }
     }
 }

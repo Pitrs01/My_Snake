@@ -11,6 +11,7 @@ namespace Snake
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
         private Texture2D snakeTexture;
+        private List<ICollectible> collectibles;
         private Apple apple;
         private Pear pear;
         private List<Vector2> snakeBody;
@@ -40,6 +41,7 @@ namespace Snake
         {
             random = new Random();
             snakeBody = new List<Vector2>();
+            collectibles = new List<ICollectible>();
 
             // Startovní pozice hada uprostřed obrazovky
             int startX = (_graphics.PreferredBackBufferWidth / 2 / cellSize) * cellSize;
@@ -73,9 +75,11 @@ namespace Snake
 
             // Vytvoření hrušky PŘED jablkem
             pear = new Pear(GraphicsDevice, cellSize);
+            collectibles.Add(pear);
 
             // Vytvoření jablka
             apple = new Apple(GraphicsDevice, cellSize);
+            collectibles.Add(apple);
             SpawnApple();
 
             // Spawn první hrušky hned na začátku
@@ -97,9 +101,10 @@ namespace Snake
                     random.Next(0, maxX) * cellSize,
                     random.Next(2, maxY) * cellSize + 40
                 );
-            } while (snakeBody.Contains(newPosition) || (pear.IsActive && newPosition == pear.Position));
+            } while (snakeBody.Contains(newPosition) || IsPositionOccupied(newPosition));
 
             apple.Position = newPosition;
+            apple.IsActive = true;
         }
 
         private void SpawnPear()
@@ -114,10 +119,22 @@ namespace Snake
                     random.Next(0, maxX) * cellSize,
                     random.Next(2, maxY) * cellSize + 40
                 );
-            } while (snakeBody.Contains(newPosition) || newPosition == apple.Position);
+            } while (snakeBody.Contains(newPosition) || IsPositionOccupied(newPosition));
 
             pear.Position = newPosition;
             pear.IsActive = true;
+        }
+
+        private bool IsPositionOccupied(Vector2 position)
+        {
+            foreach (var item in collectibles)
+            {
+                if (item.IsActive && item.Position == position)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private void CheckLevelCompletion()
@@ -215,37 +232,57 @@ namespace Snake
 
             snakeBody.Insert(0, newHead);
 
-            if (newHead == apple.Position)
+            // Kontrola kolize se všemi sbíratelnými objekty pomocí rozhraní
+            ICollectible collectedItem = null;
+            foreach (var item in collectibles)
             {
-                score += 10;
-                SpawnApple();
-                CheckLevelCompletion();
+                if (item.IsActive && newHead == item.Position)
+                {
+                    collectedItem = item;
+                    break;
+                }
             }
-            else if (pear.IsActive && newHead == pear.Position)
+
+            if (collectedItem != null)
             {
-                score -= 5;
-                pear.IsActive = false;
+                // Zpracování sebraného objektu
+                score += collectedItem.ScoreValue;
+                collectedItem.IsActive = false;
 
-                if (snakeBody.Count > 2)
+                if (collectedItem.LengthChange > 0)
                 {
-                    snakeBody.RemoveAt(snakeBody.Count - 1);
-                    snakeBody.RemoveAt(snakeBody.Count - 1);
+                    // Had roste - neodstraňujeme ocas
+                    if (collectedItem is Apple)
+                    {
+                        SpawnApple();
+                    }
+                    CheckLevelCompletion();
                 }
-                else
+                else if (collectedItem.LengthChange < 0)
                 {
-                    gameOver = true;
-                    return;
-                }
+                    // Had se zmenšuje
+                    if (snakeBody.Count > 2)
+                    {
+                        snakeBody.RemoveAt(snakeBody.Count - 1);
+                        snakeBody.RemoveAt(snakeBody.Count - 1);
+                    }
+                    else
+                    {
+                        gameOver = true;
+                        return;
+                    }
 
-                if (random.Next(0, 100) < 100)
-                {
-                    SpawnPear();
-                }
+                    if (random.Next(0, 100) < 100)
+                    {
+                        SpawnPear();
+                    }
 
-                CheckLevelCompletion();
+                    CheckLevelCompletion();
+                }
             }
             else
             {
+                // Normální pohyb - odstranění konce hada
                 snakeBody.RemoveAt(snakeBody.Count - 1);
             }
         }
@@ -256,8 +293,11 @@ namespace Snake
 
             _spriteBatch.Begin();
 
-            apple.Draw(_spriteBatch);
-            pear.Draw(_spriteBatch);
+            // Vykreslení všech sbíratelných objektů pomocí rozhraní
+            foreach (var item in collectibles)
+            {
+                item.Draw(_spriteBatch);
+            }
 
             for (int i = 0; i < snakeBody.Count; i++)
             {
@@ -326,6 +366,7 @@ namespace Snake
 
             int infoX = barX + barWidth + 20;
 
+            // Vykreslení boxů
             DrawInfoBox(pixel, infoX, barY, 80, barHeight, Color.Blue);
             DrawInfoBox(pixel, infoX + 90, barY, 120, barHeight,
                 currentLength == targetLength ? Color.Gold : (targetLength > currentLength ? Color.Green : Color.Orange));
